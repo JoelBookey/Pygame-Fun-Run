@@ -6,9 +6,7 @@ import random
 
 class State_Machine():
 
-    def __init__(self):
-        global dead
-        global has_won
+    def __init__(self):  
 
         self.SCREEN_WIDTH = 1200
         self.SCREEN_HEIGHT = 900
@@ -107,12 +105,25 @@ class State_Machine():
         self.jumping_clock = 0
         self.dead_done = False
         self.survive_time = 0
-        dead = False
-        has_won = False
+        self.show_fps = False
+        self.clock = pygame.time.Clock()
+        self.dead = False
+        self.has_won = False
 
+    def run(self):
+        
+        while True:
+            if self.dead:
+                self.game_over()
+            elif self.has_won:
+                self.win()
+            else:
+                self.normal()
+        
+            pygame.display.update()
+            self.clock.tick(60)
+        
     def reset(self):
-        global dead
-        global has_won
 
         self.player.y = 450
         self.player.x = 50
@@ -165,19 +176,18 @@ class State_Machine():
         self.start_time = time.time()
         self.left_pressed = False
         self.right_pressed = False
-        dead = False
+        self.dead = False
         self.jumping = False
         self.jumping_queue = False
         self.jumping_clock = 0
         self.dead_done = False
-        has_won = False
+        self.has_won = False
         self.win_done = False
         self.survive_time = 0
+        self.show_fps = False
 
     def normal(self):
-        global dead
-        global has_won
-
+	
         if self.mode == 'timed' and len(self.enemies) < 5:
             self.enemies.append((random.choice(self.enemy_choices), random.randint(3, 5), self.number, random.randint(1, 3)))
             self.number += random.randint(1, 4)
@@ -206,7 +216,13 @@ class State_Machine():
 
                 if event.key == pygame.K_F1 and self.mode == 'survive':
                     self.enemy_group.empty()
-                    has_won = True
+                    self.has_won = True
+		
+                if event.key == pygame.K_F2:
+                    if self.show_fps:
+                        self.show_fps = False
+                    else:
+                        self.show_fps = True
 
                 if event.key == pygame.K_ESCAPE:
                     self.reset()
@@ -258,12 +274,15 @@ class State_Machine():
         self.enemy_group.draw(self.screen)
         self.player_group.draw(self.screen)
 
+        if self.show_fps:
+            self.screen.blit(self.font.render('FPS: ' + str(round(self.clock.get_fps(), 2)), True, (0, 0, 0)), (self.SCREEN_WIDTH/2, 50))
+ 
         if self.mode == 'timed':
             self.survive_time = self.font.render(str(round(time.time() - self.start_time, 2)), True, (0, 0, 0))
             self.screen.blit(self.survive_time, (50, 50))
 
         if self.collision_check():
-            dead = True
+            self.dead = True
             self.jumping = False
             self.jumping_queue = False
             self.jumping_clock = 0
@@ -277,7 +296,7 @@ class State_Machine():
             return
 
         if not self.enemy_group.sprites():
-            has_won = True
+            self.has_won = True
             self.jumping = False
             self.jumping_queue = False
             self.jumping_queue = 0
@@ -288,10 +307,9 @@ class State_Machine():
             self.player_Y_speed = 0
             self.player_y_acc = 0
             self.player.image = self.player.images['win_left']
+            self.show_fps = True 
 
     def game_over(self):
-        global dead
-        global has_won
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -303,7 +321,7 @@ class State_Machine():
                     return
                 elif self.dead_done:
                     self.enemies = []
-                    dead = False
+                    self.dead = False
                     self.dead_done = False
                     if self.mode == 'survive':
                         self.enemies = self.enemy_generate()
@@ -537,18 +555,5 @@ class WackyBird(Enemy):
 
 pygame.init()
 
-clock = pygame.time.Clock()
-
 state = State_Machine()
-
-
-while True:
-    if not dead and not has_won:
-        state.normal()
-    elif dead:
-        state.game_over()
-    elif has_won:
-        state.win()
-    pygame.display.update()
-    clock.tick(60)
-
+state.run()
